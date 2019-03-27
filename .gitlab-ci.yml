@@ -1,0 +1,39 @@
+image: golang:1.10
+
+stages:
+ - build
+ - docker
+
+before_script:
+  - export VER=$(cat Version)
+
+build:
+  tags:
+    - linux
+    - golang
+  stage: build
+  script:
+    - pwd
+  artifacts:
+    when: on_success
+    expire_in: 1 hour
+    paths:
+      - "*"
+
+docker_build:
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    GIT_STRATEGY: none
+    DOCKER_HOST: tcp://localhost:2375
+  tags:
+    - golang
+    - linux
+  stage: docker
+  dependencies:
+    - build
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN git.wildberries.ru:4567
+    - docker build -t $CI_REGISTRY_IMAGE/${CI_COMMIT_REF_SLUG}:${VER} .
+    - docker push $CI_REGISTRY_IMAGE/${CI_COMMIT_REF_SLUG}:${VER}
